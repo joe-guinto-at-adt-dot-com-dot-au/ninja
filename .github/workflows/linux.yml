@@ -8,6 +8,14 @@ jobs:
     runs-on: [ubuntu-latest]
     container:
       image: centos:7
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'cpp' ]
     steps:
     - uses: actions/checkout@v2
     - uses: codespell-project/actions-codespell@master
@@ -23,6 +31,16 @@ jobs:
         rpm -U --quiet p7zip-16.02-20.el7.x86_64.rpm
         rpm -U --quiet p7zip-plugins-16.02-20.el7.x86_64.rpm
         yum install -y make gcc-c++ libasan clang-analyzer
+        
+    # Initializes the CodeQL tools for scanning.
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v1
+      with:
+        languages: ${{ matrix.language }}
+        # If you wish to specify custom queries, you can do so here or in a config file.
+        # By default, queries listed here will override any specified in a config file.
+        # Prefix the list here with "+" to use these queries and those in the config file.
+        # queries: ./path/to/local/query, your-org/your-repo/queries@main
 
     - name: Build debug ninja
       shell: bash
@@ -33,11 +51,6 @@ jobs:
         scan-build -o scanlogs cmake -DCMAKE_BUILD_TYPE=Debug -B debug-build
         scan-build -o scanlogs cmake --build debug-build --parallel --config Debug
 
-    - name: Build release ninja
-      shell: bash
-      run: |
-        cmake -DCMAKE_BUILD_TYPE=Release -B release-build
-        cmake --build release-build --parallel --config Release
-        strip release-build/ninja
-
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v1
 
